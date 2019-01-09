@@ -23,3 +23,4 @@ app.add_routes([web.get('/', index),
 web.run_app(app=app, host='127.0.0.1',port=9000) #127.0.0.1 和 localhost 是一样的。
 
 
+

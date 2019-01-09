@@ -1,12 +1,23 @@
 
+#!/usr/bin/env python3
 __author__ = 'zhouwude'
 
 import asyncio, logging
 
 import aiomysql
 
+
+logging.basicConfig(level=logging.DEBUG) #设置log等级
+
 def log(sql, args=()):
     logging.info('SQL: %s' % sql)
+
+
+sqlInfo = {
+    'host': "localhost",
+    'password':"@mb1314love",
+    'db':'zwdpython',
+}
 
 async def create_pool(loop, **kw):
     logging.info('create database connection pool...')
@@ -63,10 +74,10 @@ def create_args_string(num):
 class Field(object):
 
     def __init__(self, name, column_type, primary_key, default):
-        self.name = name
-        self.column_type = column_type
-        self.primary_key = primary_key
-        self.default = default
+        self.name = name #列名 column 或者 field
+        self.column_type = column_type #类型  int bigint text char(count) datetime(日期时间值) date(日期值) time(时间值)等
+        self.primary_key = primary_key # 是否为主键 alter table table_name add constraint primary key (key_name) 多个主键 (1,2)
+        self.default = default #默认值 default =
 
     def __str__(self):
         return '<%s, %s:%s>' % (self.__class__.__name__, self.column_type, self.name)
@@ -89,12 +100,14 @@ class IntegerField(Field):
 class FloatField(Field):
 
     def __init__(self, name=None, primary_key=False, default=0.0):
-        super().__init__(name, 'real', primary_key, default)
+        super().__init__(name, 'real', primary_key, default) #4字节浮点值
 
 class TextField(Field):
 
     def __init__(self, name=None, default=None):
         super().__init__(name, 'text', False, default)
+
+#DECIMAL(M,D)
 
 class ModelMetaclass(type):
 
@@ -161,7 +174,7 @@ class Model(dict, metaclass=ModelMetaclass):
                 setattr(self, key, value)
         return value
 
-    @classmethod
+    @classmethod  #表示方法为类方法 第一个参数永远都是类cls 不是self
     async def findAll(cls, where=None, args=None, **kw):
         ' find objects by where clause. '
         sql = [cls.__select__]
