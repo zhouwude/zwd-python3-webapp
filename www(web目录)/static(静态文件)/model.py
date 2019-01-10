@@ -5,7 +5,7 @@ print(sys.path)
 
 import time, uuid
 
-from orm import Model, StringField, BooleanField, FloatField, TextField
+from orm import Model, StringField, BooleanField, FloatField, TextField, create_pool
 
 
 #内置的函数 dir() 可以找到模块内定义的所有名称。以一个字符串列表的形式返回:
@@ -73,6 +73,26 @@ sqlInfo = {
     'password':"@mb1314love",
     'db':'awesome',
 }
+import  asyncio
+
+
+async  def test():
+    loop = asyncio.get_event_loop()
+    await create_pool(loop,**sqlInfo)
+    use = User(name='Test', email='test@example.com', passwd='1234567890', image='about:blank')
+    await use.save()
+
+    return "done"
+
+
+
+
+
+try:
+   r =  test().send(None)
+   print(r)
+except StopIteration as a:
+    print(a.value)
 
 
 # async
