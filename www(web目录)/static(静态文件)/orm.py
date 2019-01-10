@@ -13,11 +13,6 @@ def log(sql, args=()):
     logging.info('SQL: %s' % sql)
 
 
-sqlInfo = {
-    'host': "localhost",
-    'password':"@mb1314love",
-    'db':'zwdpython',
-}
 
 async def create_pool(loop, **kw):
     logging.info('create database connection pool...')
@@ -35,6 +30,7 @@ async def create_pool(loop, **kw):
         loop=loop
     )
 
+
 async def select(sql, args, size=None):
     log(sql, args)
     global __pool
@@ -48,21 +44,22 @@ async def select(sql, args, size=None):
         logging.info('rows returned: %s' % len(rs))
         return rs
 
-async def execute(sql, args, autocommit=True):
+async def execute(sql, args, autocommit=True): #执行某个sql
     log(sql)
     async with __pool.get() as conn:
         if not autocommit:
-            await conn.begin()
+            await conn.begin() #开启事物
+
         try:
             async with conn.cursor(aiomysql.DictCursor) as cur:
                 await cur.execute(sql.replace('?', '%s'), args)
-                affected = cur.rowcount
+                affected = cur.rowcount  #返回复合条件结果的到的count
             if not autocommit:
                 await conn.commit()
-        except BaseException as e:
+        except BaseException as e: #执行语句时出现错误
             if not autocommit:
                 await conn.rollback()
-            raise
+            raise #把语句原样抛出...raise语句如果不带参数，就会把当前错误原样抛出。此外，在except中raise一个Error，还可以把一种类型的错误转化成另一种类型：
         return affected
 
 def create_args_string(num):
@@ -87,7 +84,7 @@ class StringField(Field):
     def __init__(self, name=None, primary_key=False, default=None, ddl='varchar(100)'):
         super().__init__(name, ddl, primary_key, default)
 
-class BooleanField(Field):
+class BooleanField(Field): #布尔值不能为主键
 
     def __init__(self, name=None, default=False):
         super().__init__(name, 'boolean', False, default)
@@ -102,7 +99,7 @@ class FloatField(Field):
     def __init__(self, name=None, primary_key=False, default=0.0):
         super().__init__(name, 'real', primary_key, default) #4字节浮点值
 
-class TextField(Field):
+class TextField(Field): #长文本也不能为主键
 
     def __init__(self, name=None, default=None):
         super().__init__(name, 'text', False, default)
@@ -114,7 +111,7 @@ class ModelMetaclass(type):
     def __new__(cls, name, bases, attrs):
         if name=='Model':
             return type.__new__(cls, name, bases, attrs)
-        tableName = attrs.get('__table__', None) or name
+        tableName = attrs.get('__table__', None) or name # 没有定义表名使用 类名作为表名
         logging.info('found model: %s (table: %s)' % (name, tableName))
         mappings = dict()
         fields = []
@@ -127,7 +124,7 @@ class ModelMetaclass(type):
                     # 找到主键:
                     if primaryKey:
 
-                        raise Exception('Duplicate primary key for field: %s' % k)
+                        raise Exception('Duplicate primary key for field: %s' % k) #如果主键已经有值了，则抛出错误
                     primaryKey = k
                 else:
                     fields.append(k)
@@ -135,12 +132,12 @@ class ModelMetaclass(type):
 
             raise Exception('Primary key not found.')
         for k in mappings.keys():
-            attrs.pop(k)
+            attrs.pop(k) #删除 attrs中的 field
         escaped_fields = list(map(lambda f: '`%s`' % f, fields))
         attrs['__mappings__'] = mappings # 保存属性和列的映射关系
         attrs['__table__'] = tableName
         attrs['__primary_key__'] = primaryKey # 主键属性名
-        attrs['__fields__'] = fields # 除主键外的属性名
+        attrs['__fields__'] = fields # 除主键外的属性名 主键不在 field 中
         attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ', '.join(escaped_fields), tableName)
         attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (tableName, ', '.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields) + 1))
         attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
@@ -150,7 +147,7 @@ class ModelMetaclass(type):
 class Model(dict, metaclass=ModelMetaclass):
 
     def __init__(self, **kw):
-        super(Model, self).__init__(**kw)
+        super(Model, self).__init__(**kw) #py3 super().init(**kw)
 
     def __getattr__(self, key):
         try:
@@ -162,14 +159,14 @@ class Model(dict, metaclass=ModelMetaclass):
         self[key] = value
 
     def getValue(self, key):
-        return getattr(self, key, None)
+        return getattr(self, key, None) #设置一个默认值 None
 
     def getValueOrDefault(self, key):
         value = getattr(self, key, None)
         if value is None:
             field = self.__mappings__[key]
             if field.default is not None:
-                value = field.default() if callable(field.default) else field.default
+                value = field.default() if callable(field.default) else field.default #callable()函数，我们就可以判断一个对象是否是“可调用”对象。
                 logging.debug('using default value for %s: %s' % (key, str(value)))
                 setattr(self, key, value)
         return value
@@ -178,43 +175,43 @@ class Model(dict, metaclass=ModelMetaclass):
     async def findAll(cls, where=None, args=None, **kw):
         ' find objects by where clause. '
         sql = [cls.__select__]
-        if where:
+        if where: #sql限制条件
             sql.append('where')
             sql.append(where)
         if args is None:
             args = []
-        orderBy = kw.get('orderBy', None)
+        orderBy = kw.get('orderBy', None) #sql 排序语句 order by column_mane (desc 倒序)，other_column
         if orderBy:
             sql.append('order by')
             sql.append(orderBy)
-        limit = kw.get('limit', None)
+        limit = kw.get('limit', None) #限制语句
         if limit is not None:
             sql.append('limit')
-            if isinstance(limit, int):
+            if isinstance(limit, int): #纯限制 limit count
                 sql.append('?')
                 args.append(limit)
-            elif isinstance(limit, tuple) and len(limit) == 2:
+            elif isinstance(limit, tuple) and len(limit) == 2:  #limit offset组合语句 limit count offset count (count1, count2)
                 sql.append('?, ?')
                 args.extend(limit)
             else:
                 raise ValueError('Invalid limit value: %s' % str(limit))
         rs = await select(' '.join(sql), args)
-        return [cls(**r) for r in rs]
+        return [cls(**r) for r in rs] #cls(**r) 直接初始化自己
 
     @classmethod
     async def findNumber(cls, selectField, where=None, args=None):
         ' find number by select and where. '
-        sql = ['select %s _num_ from `%s`' % (selectField, cls.__table__)]
+        sql = ['select %s _num_ from `%s`' % (selectField, cls.__table__)] #_num_ 是列的别名 相当于 as _num_
         if where:
             sql.append('where')
             sql.append(where)
         rs = await select(' '.join(sql), args, 1)
         if len(rs) == 0:
             return None
-        return rs[0]['_num_']
+        return rs[0]['_num_'] #
 
     @classmethod
-    async def find(cls, pk):
+    async def find(cls, pk): #根据主键查找
         ' find object by primary key. '
         rs = await select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
         if len(rs) == 0:
@@ -240,3 +237,4 @@ class Model(dict, metaclass=ModelMetaclass):
         rows = await execute(self.__delete__, args)
         if rows != 1:
             logging.warning('failed to remove by primary key: affected rows: %s' % rows)
+
