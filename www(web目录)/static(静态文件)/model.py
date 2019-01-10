@@ -86,11 +86,11 @@ async  def test():
 
 
 
-
-
+t = test() #coroutine object
+print(t)
 try:
-   r =  test().send(None)
-   print(r)
+   r =  t.send(None)
+   print('--------%s' % r)
 except StopIteration as a:
     print(a.value)
 
