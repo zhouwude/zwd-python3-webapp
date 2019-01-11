@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
 import sys
-print(sys.path)
+# print(sys.path)
 
 import time, uuid
 
-from orm import Model, StringField, BooleanField, FloatField, TextField, create_pool
+from orm import Model, StringField, BooleanField, FloatField, TextField, create_pool, destory_pool
 
 
 #内置的函数 dir() 可以找到模块内定义的所有名称。以一个字符串列表的形式返回:
 #内置函数dir()不仅可以 找到某个对象所有属性和方法 还能输出 某个模块得所有属性和方法
-print(dir())
+# print(dir())
 # class User(Model):
 #     __table__ = 'users' # 设置表名称
 #
@@ -76,23 +76,42 @@ sqlInfo = {
 import  asyncio
 
 
-async  def test():
-    loop = asyncio.get_event_loop()
+async  def test(loop):
+    # loop = asyncio.get_event_loop()
     await create_pool(loop,**sqlInfo)
-    use = User(name='Test', email='test@example.com', passwd='1234567890', image='about:blank')
+    use = User(name='Test1', email='4904154289@qq.com', passwd='1234567890', image='about:blank')
     await use.save()
-
-    return "done"
-
+    await destory_pool() #save完成后 关闭 pool
 
 
-t = test() #coroutine object
-print(t)
-try:
-   r =  t.send(None)
-   print('--------%s' % r)
-except StopIteration as a:
-    print(a.value)
 
+# t = test() #coroutine object
 
-# async
+from  collections.abc import Iterator, Iterable
+import  types
+
+# print(type(t) == types.CoroutineType)
+
+# print(t)
+
+# 执行一个 coroutine
+# asyncio.run(t)
+# try:
+#    r =  t.send(None)
+#    print('--------%s' % r)
+# except StopIteration as a:
+#     print(a.value)
+#
+
+# async 执行一个 coroutine对象
+def runEventLoop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(test(loop))
+    loop.close()
+if __name__ == "__main__":
+    oldloop = asyncio.get_event_loop()
+    runEventLoop()
+    # runEventLoop()
+    asyncio.set_event_loop(oldloop)
+

@@ -13,6 +13,7 @@ def log(sql, args=()):
     logging.info('SQL: %s' % sql)
 
 
+__pool = None
 
 async def create_pool(loop, **kw):
     logging.info('create database connection pool...')
@@ -29,6 +30,13 @@ async def create_pool(loop, **kw):
         minsize=kw.get('minsize', 1),
         loop=loop
     )
+
+
+#close  pool
+async def destory_pool():
+    if __pool is not None :
+        __pool.close()
+        await __pool.wait_closed()
 
 
 async def select(sql, args, size=None):
