@@ -5,7 +5,7 @@
 Configuration
 '''
 
-__author__ = 'Michael Liao'
+__author__ = 'Wude Zhou'
 
 import config_default
 
